@@ -16,9 +16,10 @@ class Renderer {
         this.ctx = this.canvas.getContext('2d');
         this.scene = this.processScene(scene);
         this.vrc = this.getVRC(scene);
-        this.enable_animation = false;  // <-- disabled for easier debugging; enable for animation
+        this.enable_animation = true;  // <-- disabled for easier debugging; enable for animation
         this.start_time = null;
         this.prev_time = null;
+        this.step = 1;
     }
 
     //
@@ -26,47 +27,82 @@ class Renderer {
         // TODO: update any transformations needed for animation
         // Vector3
         let vrc = this.vrc;
-        console.log("u: "+vrc.u.values);
-        console.log("v: "+vrc.v.values);
-        console.log("n: "+vrc.n.values);
+        //console.log("u: "+vrc.u.values);
+        //console.log("v: "+vrc.v.values);
+        //console.log("n: "+vrc.n.values);
     }
 
     //
     rotateLeft() {
-
+        
     }
     
     //
     rotateRight() {
 
     }
-    
-    //
+   
     moveLeft() {
-
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        prp[0] = prp[0] - vrcu[0];
+        srp[0] = srp[0] - vrcu[0];
+        prp[1] = prp[1] - vrcu[1];
+        srp[1] = srp[1] - vrcu[1];
+        prp[2] = prp[2] - vrcu[2];
+        srp[2] = srp[2] - vrcu[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
     
-    //
     moveRight() {
-
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        prp[0] = prp[0] + vrcu[0];
+        srp[0] = srp[0] + vrcu[0];
+        prp[1] = prp[1] + vrcu[1];
+        srp[1] = srp[1] + vrcu[1];
+        prp[2] = prp[2] + vrcu[2];
+        srp[2] = srp[2] + vrcu[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
     
-    //
     moveBackward() {
-
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcn = this.toArray(this.vrc.n);
+        prp[0] = prp[0] + vrcn[0];
+        srp[0] = srp[0] + vrcn[0];
+        prp[1] = prp[1] + vrcn[1];
+        srp[1] = srp[1] + vrcn[1];
+        prp[2] = prp[2] + vrcn[2];
+        srp[2] = srp[2] + vrcn[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
     
-    //
     moveForward() {
-
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcn = this.toArray(this.vrc.n);
+        prp[0] = prp[0] - vrcn[0];
+        srp[0] = srp[0] - vrcn[0];
+        prp[1] = prp[1] - vrcn[1];
+        srp[1] = srp[1] - vrcn[1];
+        prp[2] = prp[2] - vrcn[2];
+        srp[2] = srp[2] - vrcn[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
-
     //
     //meth: draw
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        console.log('draw()');
+        //console.log('draw()');
 
         // TODO: implement drawing here!
         // For each model
@@ -189,8 +225,8 @@ class Renderer {
         // console.log(nPer.values);
         // console.log("mnPer");
         // console.log(mnPer.values);
-        console.log("modified");
-        console.log(modifiedPoints);
+        //console.log("modified");
+        //console.log(modifiedPoints);
 
         
 
@@ -207,7 +243,7 @@ class Renderer {
                         ];
         /*/
         let edges = this.scene.models[0].edges;
-        console.log(this.scene.models[0].edges);
+        //console.log(this.scene.models[0].edges);
         //*/
         for(let edge=0; edge<edges.length; edge++){
             for(let vertex=0; vertex<edges[edge].length-1; vertex++){
@@ -260,10 +296,11 @@ class Renderer {
         let result = null;
         let p0 = Vector3(line.pt0.x, line.pt0.y, line.pt0.z); 
         let p1 = Vector3(line.pt1.x, line.pt1.y, line.pt1.z);
-        let out0 = this.outcodePerspective(p0, z_min);
-        let out1 = this.outcodePerspective(p1, z_min);
+        let out0 = outcodePerspective(p0, z_min);
+        let out1 = outcodePerspective(p1, z_min);
         
         // TODO: implement clipping here!
+        // DO I implement this for z?
         
         return result;
     }
@@ -400,9 +437,9 @@ class Renderer {
         this.ctx.moveTo(x0, y0);
         this.ctx.lineTo(x1, y1);
         this.ctx.stroke();
-        
+
         this.ctx.fillStyle = '#FF0000';
         this.ctx.fillRect(x0 - 2, y0 - 2, 4, 4);
         this.ctx.fillRect(x1 - 2, y1 - 2, 4, 4);
     }
-}
+};
