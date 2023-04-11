@@ -5,6 +5,10 @@ const TOP =    4;  // binary 000100
 const FAR =    2;  // binary 000010
 const NEAR =   1;  // binary 000001
 const FLOAT_EPSILON = 0.000001;
+const BITS = [32,16,8,4,2,1];
+let prp1=0;
+let prp2=0;
+let prp3=0;
 
 class Renderer {
     // canvas:              object ({id: __, width: __, height: __})
@@ -33,31 +37,43 @@ class Renderer {
 
     //
     rotateLeft() {
-
+        prp1--;
+        this.draw();
     }
     
     //
     rotateRight() {
+
+        prp1++;
+        this.draw();
 
     }
     
     //
     moveLeft() {
 
+        prp3--;
+        this.draw();
     }
     
     //
     moveRight() {
+        prp3++;
+        this.draw();
 
     }
     
     //
     moveBackward() {
+        prp2++;
+        this.draw();
 
     }
     
     //
     moveForward() {
+        prp2--;
+        this.draw();
 
     }
 
@@ -77,7 +93,9 @@ class Renderer {
         /*/test example
         let prp = [0, 10, -5];
         /*/
-        let prp = this.toArray(this.scene.view.prp);
+        // let prp = this.toArray(this.scene.view.prp);
+        // let prp = [prp1, prp2, prp3];
+        let prp = [this.toArray(this.scene.view.prp)[0]+prp1, this.toArray(this.scene.view.prp)[1]+prp2, this.toArray(this.scene.view.prp)[2]+prp3];
         //*/
 
         //T(-PRP)
@@ -86,6 +104,7 @@ class Renderer {
 
 
         let vrc = this.vrc;
+        // let prp = [prp1, prp2, prp3];
         let u = this.toArray(vrc.u);
         let v = this.toArray(vrc.v);
         let n = this.toArray(vrc.n);
@@ -99,10 +118,10 @@ class Renderer {
 
         //SHpar
         let shearPar = new Matrix(4, 4);
-        //*/test example
-        let clip = this.scene.view.clip;
-        /*/
+        /*/test example
         let clip = [-12, 6, -12, 6, 10, 100];
+        /*/
+        let clip = this.scene.view.clip;
         //*/
         let left = clip[0];
         let right = clip[1];
@@ -126,105 +145,82 @@ class Renderer {
 
         let nPer = new Matrix(4, 4);
         nPer = Matrix.multiply([scalePer, shearPar, rotate, translatePRP]);
-        
-        //clip nper
-        
+        let z_min = -near/far;
+        for(let i=0; i<this.scene.models.length; i++){
+            this.drawModel(i, nPer, z_min);
+        }
 
-        //mPer * nPer
-        let mnPer = Matrix.multiply([mat4x4MPer(), nPer]);
-        
+    }
 
+    drawModel(model, nPer, z_min){
+        
         /*/test example
         let testingPoints = [[0, 0, -30], [20, 0, -30], [20, 12, -30], [10, 20, -30], [0, 12, -30], [0, 0, -60], [20, 0, -60], [20, 12, -60], [10, 20, -60], [0, 12, -60]];
         /*/
-        let testingPoints = this.scene.models[0].vertices;
+        let testingPoints = this.scene.models[model].vertices;
         //*/
-        let modifiedPoints = []
+        let modifiedPoints = [];
         for(let i=0; i<testingPoints.length; i++){
             /*/test example
             let points = testingPoints[i];
             /*/
-            let points = this.toArray(this.scene.models[0].vertices[i]);
+            let points = this.toArray(testingPoints[i]);
             //*/
             let originalPoints = new Matrix(4, 1);
             originalPoints.values = [points[0],
                                      points[1],
                                      points[2],
                                      1];
-            let multipliedPoints = Matrix.multiply([mnPer, originalPoints]);
+            let multipliedPoints = Matrix.multiply([nPer, originalPoints]);
             let multipliedArr = this.toArray(multipliedPoints);
-            
-            multipliedPoints = Matrix.multiply([frameBufferUnits(this.canvas.width, this.canvas.height), multipliedPoints]);
-            // mat4x4Translate(multipliedPoints, multipliedArr[0]+1, multipliedArr[1]+1, multipliedArr[2]);
-            multipliedArr = this.toArray(multipliedPoints);
-            let modifiedX = multipliedArr[0]/multipliedArr[3];
-            let modifiedY = multipliedArr[1]/multipliedArr[3];
-            modifiedPoints[i] = [modifiedX, modifiedY];
-            
+            modifiedPoints[i] = multipliedArr;
 
-            // console.log(modifiedPoints[i]);
-            //*/
         }
-
-        //window/framebuffer units
-
-
-
-        // let test = new Vector(3);
-        // test.values = 
-
-        //prints
-        // console.log(prp);
-        // console.log("translate");
-        // console.log(translatePRP.values);
-        // console.log("rotate");
-        // console.log(rotate.values);
-        // console.log("shearpar");
-        // console.log(shearPar.values);
-        // console.log("sper");
-        // console.log(scalePer.values);
-        // console.log("mper");
-        // console.log(mat4x4MPer().values);
-        // console.log("nper");
-        // console.log(nPer.values);
-        // console.log("mnPer");
-        // console.log(mnPer.values);
-        console.log("modified");
-        console.log(modifiedPoints);
-
-        
-
-
-        /*/test example
-        let edges = [[0,1,2,3,4,0],
-                     [5,6,7,8,9,5],
-                        [0,5],
-                        [1,6],
-                        [2,7],
-                        [3,8],
-                        [4,9],
-                        [5,10]
-                        ];
-        /*/
-        let edges = this.scene.models[0].edges;
-        console.log(this.scene.models[0].edges);
-        //*/
+        let edges = this.scene.models[model].edges;
         for(let edge=0; edge<edges.length; edge++){
             for(let vertex=0; vertex<edges[edge].length-1; vertex++){
                 let v1 = edges[edge][vertex];
-                let v2 = edges[edge][(vertex+1)%edges[0].length];
-                this.drawLine(modifiedPoints[v1][0], modifiedPoints[v1][1], modifiedPoints[v2][0], modifiedPoints[v2][1]);
+                let v2 = edges[edge][(vertex+1)];
+                let p0 = new Vector4(modifiedPoints[v1][0], modifiedPoints[v1][1], modifiedPoints[v1][2], modifiedPoints[v1][3]);
+                let p1 = new Vector4(modifiedPoints[v2][0], modifiedPoints[v2][1], modifiedPoints[v2][2], modifiedPoints[v1][3]);
+                
+                //clipping the points
+                let clipped = this.clipLinePerspective({pt0: p0, pt1: p1}, z_min);
+                if(clipped != null){
+                    let mnPointPer0;
+                    let mnPointPer1;
+                    let clippedP0 = new Matrix(4, 1);
+                    let clippedP1 = new Matrix(4, 1);
+                    clippedP0.values = [clipped.pt0.x,
+                                        clipped.pt0.y,
+                                        clipped.pt0.z,
+                                        1];
+                    clippedP1.values = [clipped.pt1.x,
+                                            clipped.pt1.y,
+                                            clipped.pt1.z,
+                                            1];
+                                                
+                    mnPointPer0 = Matrix.multiply([frameBufferUnits(this.canvas.width, this.canvas.height), mat4x4MPer(), clippedP0]);
+                    mnPointPer1 = Matrix.multiply([frameBufferUnits(this.canvas.width, this.canvas.height), mat4x4MPer(), clippedP1]);
+                    
+                    let mnArr0 = this.toArray(mnPointPer0);
+                    let mnArr1 = this.toArray(mnPointPer1);
+                    //divide x and y by w
+                    mnArr0[0] = mnArr0[0]/mnArr0[3];
+                    mnArr0[1] = mnArr0[1]/mnArr0[3];
+
+                    mnArr1[0] = mnArr1[0]/mnArr1[3];
+                    mnArr1[1] = mnArr1[1]/mnArr1[3];
+                    this.drawLine(mnArr0[0], mnArr0[1], mnArr1[0], mnArr1[1]);
+                    
+                    // console.log(mnArr0, mnArr1);
+                    
+                }
             }
         }
-
-        // console.log(this.scene.models[0].vertices);
-        
-        //   * For each line segment in each edge
-        //     * clip in 3D
-        //     * project to 2D
-        //     * translate/scale to viewport (i.e. window)
-        //     * draw line
     }
+
+
 
     // Get outcode for a vertex
     // vertex:       Vector4 (transformed vertex in homogeneous coordinates)
@@ -258,14 +254,113 @@ class Renderer {
     // z_min:        float (near clipping plane in canonical view volume)
     clipLinePerspective(line, z_min) {
         let result = null;
-        let p0 = Vector3(line.pt0.x, line.pt0.y, line.pt0.z); 
+        let p0 = Vector3(line.pt0.x, line.pt0.y, line.pt0.z);
         let p1 = Vector3(line.pt1.x, line.pt1.y, line.pt1.z);
         let out0 = this.outcodePerspective(p0, z_min);
         let out1 = this.outcodePerspective(p1, z_min);
         
         // TODO: implement clipping here!
+        let test = this.trivialTests(out0, out1);
+        if(test === "accept"){
+            // console.log("Accept");
+            return line;
+        }else if(test === "reject"){
+            // console.log("Reject");
+            return result;
+        }else{
+            let cx = p1.x-p0.x;
+            let cy = p1.y-p0.y;
+            let cz = p1.z-p0.z;
+            let pt0 = p0;
+            let pt1 = p1;
+            let c = {x: cx, y: cy, z:cz};
+            let newOut0 = out0;
+            let newOut1 = out1;
+            let newTest = test;
+            // console.log(pt0.x, pt0.y, pt1.x, pt1.y);
+            while(newTest==="clip"){
+                if(out0 != 0){
+                    pt0 = this.clipPoint(newOut0, pt0, c, z_min);
+                    newOut0 = newOut0-this.firstBit(newOut0);
+                }
+                if(out1 != 0){
+                    pt1 = this.clipPoint(newOut1, pt1, c, z_min);
+                    newOut1 = newOut1-this.firstBit(newOut1);
+                }
+                newTest = this.trivialTests(this.outcodePerspective(pt0, z_min), this.outcodePerspective(pt1, z_min));
+                
+            }
+
+            if(newTest === "reject"){
+                return result;
+            }
+            // console.log("aa "+pt0.data, pt1.data);
+
+            result = {pt0: pt0, pt1: pt1};
+            // console.log(pt0.x, pt0.y, pt1.x, pt1.y);
+            return result;
+        }
+    }
+
+    clipPoint(out, p, c, z_min){
+        let t = 0;
+        let firstBit = this.firstBit(out);
+        if(firstBit == LEFT){
+            t = this.intersectTvalue(-p.x, p.z, c.x, -c.z);
+        }
+        else if(firstBit == RIGHT){
+            t = this.intersectTvalue(p.x, p.z, -c.x, -c.z);
+        }
+        else if(firstBit == BOTTOM){
+            t = this.intersectTvalue(-p.y, p.z, c.y, -c.z);
+        }
+        else if(firstBit == TOP){
+            t = this.intersectTvalue(p.y, p.z, -c.y, -c.z);
+        }
+        else if(firstBit == NEAR){
+            t = this.intersectTvalue(p.z, -z_min, 0, -c.z);
+        }
+        else /* if(firstBit == FAR) */{
+            t = this.intersectTvalue(-p.z, -1, 0, c.z);
+        }
         
-        return result;
+        let x = p.x+t*c.x;
+        let y = p.y+t*c.y;
+        let z = p.z+t*c.z;
+
+        // console.log(x, y, z);
+        return Vector3(x, y, z);
+    }
+    
+
+    intersectTvalue(xyz, z, cxyz, cz){
+        let eq = (xyz+z)/(cxyz+cz)
+        return eq;
+    }
+
+    firstBit(out){
+        // console.log(out);
+        for(let i=0; i<BITS.length; i++){   
+            // console.log(out >= BITS[i]);
+            if(out >= BITS[i]){
+                return BITS[i];
+            }
+        }
+        return 0;
+    }
+
+    trivialTests(out0, out1){
+        if(out0 | out1 == 0){
+            //trivial accept
+            return "accept";
+        }
+        else if(out0 & out1 != 0){
+            //trivial reject
+            return "reject";
+        }else{
+            //clip math stuff
+            return "clip";
+        }
     }
 
     //
@@ -282,6 +377,7 @@ class Renderer {
         this.updateTransforms(time, delta_time);
 
         // Draw slide
+
         this.draw();
 
         // Invoke call for next frame in animation
@@ -320,7 +416,6 @@ class Renderer {
         srp.values = [20, 15, -40];
         vup.values = [1, 1, 0];
         //*/
-        // console.log(prp.values[0][0]);
         let n = prp.subtract(srp);
         n.normalize();
 
@@ -369,17 +464,46 @@ class Renderer {
                         model.animation = JSON.parse(JSON.stringify(scene.models[i].animation));
                     }
                 }
-            }
-            else {
-                model.center = Vector4(scene.models[i].center[0],
-                                       scene.models[i].center[1],
-                                       scene.models[i].center[2],
-                                       1);
-                for (let key in scene.models[i]) {
-                    if (scene.models[i].hasOwnProperty(key) && key !== 'type' && key != 'center') {
-                        model[key] = JSON.parse(JSON.stringify(scene.models[i][key]));
+            }else if(model.type === 'cube'){
+                //find verticies
+                //find edges
+                model.vertices = [];
+
+                let center = JSON.parse(JSON.stringify(scene.models[i].center));
+                let width = JSON.parse(JSON.stringify(scene.models[i].width));
+                console.log(center);
+                let cubeVerticies = this.getCubeVertices(center, width);
+                model.edges = [
+                    [0, 1, 2, 3, 0],
+                    [4, 5, 6, 7, 4],
+                    [0, 4],
+                    [1, 5],
+                    [2, 6],
+                    [3, 7]
+                ];
+                console.log(cubeVerticies);
+                console.log(model.edges);
+                for (let j = 0; j < cubeVerticies.length; j++) {
+                    model.vertices.push(Vector4(cubeVerticies[j][0],
+                                                cubeVerticies[j][1],
+                                                cubeVerticies[j][2],
+                                                1));
+                    if (scene.models[i].hasOwnProperty('animation')) {
+                        model.animation = JSON.parse(JSON.stringify(scene.models[i].animation));
                     }
                 }
+                
+            }
+            else {
+                // model.center = Vector4(scene.models[i].center[0],
+                //                        scene.models[i].center[1],
+                //                        scene.models[i].center[2],
+                //                        1);
+                // for (let key in scene.models[i]) {
+                //     if (scene.models[i].hasOwnProperty(key) && key !== 'type' && key != 'center') {
+                //         model[key] = JSON.parse(JSON.stringify(scene.models[i][key]));
+                //     }
+                // }
             }
 
             model.matrix = new Matrix(4, 4);
@@ -387,6 +511,36 @@ class Renderer {
         }
 
         return processed;
+    }
+
+    getCubeVertices(center, width){
+        let hw = width*0.5;
+        let result = [];
+        let adj = [
+            [-hw, -hw,  hw],
+            [-hw,  hw,  hw],
+            [ hw,  hw,  hw],
+            [ hw, -hw,  hw],
+            [-hw, -hw, -hw],
+            [-hw,  hw, -hw],
+            [ hw,  hw, -hw],
+            [ hw, -hw, -hw],
+        ]
+        for(let i=0; i<adj.length; i++){
+            result.push(this.cubeVertex(center, adj[i]));
+        }
+        // console.log(result);
+        return result;
+    }
+
+    cubeVertex(center, adjustments){
+        let lr = adjustments[0];
+        let bt = adjustments[1];
+        let fn = adjustments[2];
+        let vX = center[0]+lr;
+        let vY = center[1]+bt;
+        let vZ = center[2]+fn;
+        return [vX, vY, vZ];
     }
     
     // x0:           float (x coordinate of p0)

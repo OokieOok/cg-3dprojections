@@ -104,13 +104,13 @@ function mat4x4ShearXY(mat4x4, shx, shy) {
 }
 
 function frameBufferUnits(w,h){
-    let test = new Matrix(4, 4);
-    test.values = [[w*0.5,  0,      0,   w*0.5],
-                   [0,      h*0.5,  0,   h*0.5],
-                   [0,      0,      1,   0],
-                   [0,      0,     0,   1]];
+    let fbUnits = new Matrix(4, 4);
+    fbUnits.values = [[w*0.5,  0,      0,   w*0.5],
+                      [0,      h*0.5,  0,   h*0.5],
+                      [0,      0,      1,   0],
+                      [0,      0,      0,   1]];
 
-    return test;
+    return fbUnits;
 }
 
 // create a new 3-component vector with values x,y,z

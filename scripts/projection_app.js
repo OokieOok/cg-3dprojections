@@ -54,6 +54,7 @@ function init() {
 
     let initial_scene = {
         view: {
+            //*/
             prp: [44, 20, -16],
             srp: [20, 20, -40],
             vup: [0, 1, 0],
