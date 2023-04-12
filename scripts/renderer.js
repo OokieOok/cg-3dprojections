@@ -6,9 +6,6 @@ const FAR =    2;  // binary 000010
 const NEAR =   1;  // binary 000001
 const FLOAT_EPSILON = 0.000001;
 const BITS = [32,16,8,4,2,1];
-let prp1=0;
-let prp2=0;
-let prp3=0;
 
 class Renderer {
     // canvas:              object ({id: __, width: __, height: __})
@@ -20,9 +17,11 @@ class Renderer {
         this.ctx = this.canvas.getContext('2d');
         this.scene = this.processScene(scene);
         this.vrc = this.getVRC(scene);
-        this.enable_animation = false;  // <-- disabled for easier debugging; enable for animation
+        this.enable_animation = true;  // <-- disabled for easier debugging; enable for animation
         this.start_time = null;
         this.prev_time = null;
+        this.step = 1;
+        this.angle = Math.PI / 180;
     }
 
     //
@@ -30,58 +29,132 @@ class Renderer {
         // TODO: update any transformations needed for animation
         // Vector3
         let vrc = this.vrc;
-        console.log("u: "+vrc.u.values);
-        console.log("v: "+vrc.v.values);
-        console.log("n: "+vrc.n.values);
+        //console.log("u: "+vrc.u.values);
+        //console.log("v: "+vrc.v.values);
+        //console.log("n: "+vrc.n.values);
     }
 
     //
     rotateLeft() {
-        prp1--;
-        this.draw();
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        let vrcn = this.toArray(this.vrc.n);
+        let vrcv = this.toArray(this.vrc.v);
+        let cos = Math.cos(this.angle);
+        let sin = Math.sin(this.angle);
+        let prpsrp = [0,0,0]
+        prpsrp[0] = srp[0] - prp[0];
+        prpsrp[1] = srp[1] - prp[1];
+        prpsrp[2] = srp[2] - prp[2];
+
+        let x = prpsrp[0] * cos + prpsrp[2] * sin;
+        let z = -prpsrp[0] * sin + prpsrp[2] * cos;
+
+        srp[0] = x + prp[0];
+        srp[1] = prpsrp[1] + prp[1];
+        srp[2] = z + prp[2];
+
+        let vrcu_new = vrcu.map((v, i) => v * cos + vrcv[i] * sin);
+        let vrcv_new = vrcv.map((v, i) => -vrcu[i] * sin + v * cos);
+
+        this.vrc.u = Vector3(vrcu_new[0], vrcu_new[1], vrcu_new[2]);
+        this.vrc.n = Vector3(vrcn[0], vrcn[1], vrcn[2]);
+        this.vrc.v = Vector3(vrcv_new[0], vrcv_new[1], vrcv_new[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
+        
     }
     
     //
     rotateRight() {
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        let vrcn = this.toArray(this.vrc.n);
+        let vrcv = this.toArray(this.vrc.v);
+        let cos = Math.cos(-this.angle);
+        let sin = Math.sin(-this.angle);
+        let prpsrp = [0,0,0]
+        prpsrp[0] = srp[0] - prp[0];
+        prpsrp[1] = srp[1] - prp[1];
+        prpsrp[2] = srp[2] - prp[2];
 
-        prp1++;
-        this.draw();
+        let x = prpsrp[0] * cos + prpsrp[2] * sin;
+        let z = -prpsrp[0] * sin + prpsrp[2] * cos;
 
+        srp[0] = x + prp[0];
+        srp[1] = prpsrp[1] + prp[1];
+        srp[2] = z + prp[2];
+
+        let vrcu_new = vrcu.map((v, i) => v * cos + vrcv[i] * sin);
+        let vrcv_new = vrcv.map((v, i) => -vrcu[i] * sin + v * cos);
+
+        this.vrc.u = Vector3(vrcu_new[0], vrcu_new[1], vrcu_new[2]);
+        this.vrc.n = Vector3(vrcn[0], vrcn[1], vrcn[2]);
+        this.vrc.v = Vector3(vrcv_new[0], vrcv_new[1], vrcv_new[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
-    
-    //
+   
     moveLeft() {
-
-        prp3--;
-        this.draw();
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        prp[0] = prp[0] - vrcu[0];
+        srp[0] = srp[0] - vrcu[0];
+        prp[1] = prp[1] - vrcu[1];
+        srp[1] = srp[1] - vrcu[1];
+        prp[2] = prp[2] - vrcu[2];
+        srp[2] = srp[2] - vrcu[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
     
-    //
     moveRight() {
-        prp3++;
-        this.draw();
-
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        prp[0] = prp[0] + vrcu[0];
+        srp[0] = srp[0] + vrcu[0];
+        prp[1] = prp[1] + vrcu[1];
+        srp[1] = srp[1] + vrcu[1];
+        prp[2] = prp[2] + vrcu[2];
+        srp[2] = srp[2] + vrcu[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
     
-    //
     moveBackward() {
-        prp2++;
-        this.draw();
-
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcn = this.toArray(this.vrc.n);
+        prp[0] = prp[0] + vrcn[0];
+        srp[0] = srp[0] + vrcn[0];
+        prp[1] = prp[1] + vrcn[1];
+        srp[1] = srp[1] + vrcn[1];
+        prp[2] = prp[2] + vrcn[2];
+        srp[2] = srp[2] + vrcn[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
     
-    //
     moveForward() {
-        prp2--;
-        this.draw();
-
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcn = this.toArray(this.vrc.n);
+        prp[0] = prp[0] - vrcn[0];
+        srp[0] = srp[0] - vrcn[0];
+        prp[1] = prp[1] - vrcn[1];
+        srp[1] = srp[1] - vrcn[1];
+        prp[2] = prp[2] - vrcn[2];
+        srp[2] = srp[2] - vrcn[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
-
     //
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        console.log('draw()');
+        //console.log('draw()');
 
         // TODO: implement drawing here!
         // For each model
@@ -89,13 +162,13 @@ class Renderer {
         //     * transform endpoints to canonical view volume
         
         //transformations
-        // let prp = this.toArray(this.scene.view.prp);
+        let prp = this.toArray(this.scene.view.prp);
         
         // this.drawCircle({x: 300, y: 300}, 200, 13);
         // this.getCircleVerticies({x: 300, z: 300}, 200, 13);
 
         //Test with WASD and left/right arrow keys
-        let prp = [this.toArray(this.scene.view.prp)[0]+prp1, this.toArray(this.scene.view.prp)[1]+prp2, this.toArray(this.scene.view.prp)[2]+prp3];
+        // let prp = [this.toArray(this.scene.view.prp)[0]+prp1, this.toArray(this.scene.view.prp)[1]+prp2, this.toArray(this.scene.view.prp)[2]+prp3];
 
         //T(-PRP)
         let translatePRP = new Matrix(4, 4);
@@ -633,9 +706,9 @@ class Renderer {
         this.ctx.moveTo(x0, y0);
         this.ctx.lineTo(x1, y1);
         this.ctx.stroke();
-        
+
         this.ctx.fillStyle = '#FF0000';
         this.ctx.fillRect(x0 - 2, y0 - 2, 4, 4);
         this.ctx.fillRect(x1 - 2, y1 - 2, 4, 4);
     }
-}
+};
