@@ -78,7 +78,6 @@ class Renderer {
     }
 
     //
-    //meth: draw
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -90,13 +89,13 @@ class Renderer {
         //     * transform endpoints to canonical view volume
         
         //transformations
-        /*/test example
-        let prp = [0, 10, -5];
-        /*/
         // let prp = this.toArray(this.scene.view.prp);
-        // let prp = [prp1, prp2, prp3];
+        
+        // this.drawCircle({x: 300, y: 300}, 200, 13);
+        // this.getCircleVerticies({x: 300, z: 300}, 200, 13);
+
+        //Test with WASD and left/right arrow keys
         let prp = [this.toArray(this.scene.view.prp)[0]+prp1, this.toArray(this.scene.view.prp)[1]+prp2, this.toArray(this.scene.view.prp)[2]+prp3];
-        //*/
 
         //T(-PRP)
         let translatePRP = new Matrix(4, 4);
@@ -104,7 +103,6 @@ class Renderer {
 
 
         let vrc = this.vrc;
-        // let prp = [prp1, prp2, prp3];
         let u = this.toArray(vrc.u);
         let v = this.toArray(vrc.v);
         let n = this.toArray(vrc.n);
@@ -118,19 +116,13 @@ class Renderer {
 
         //SHpar
         let shearPar = new Matrix(4, 4);
-        /*/test example
-        let clip = [-12, 6, -12, 6, 10, 100];
-        /*/
         let clip = this.scene.view.clip;
-        //*/
         let left = clip[0];
         let right = clip[1];
         let bottom = clip[2];
         let top = clip[3];
         let near = clip[4];
         let far = clip[5];
-
-        // console.log(clip);
 
         let CW = new Vector(3);
         CW.values = [(left+right)/2, (bottom+top)/2, -near];
@@ -153,29 +145,24 @@ class Renderer {
     }
 
     drawModel(model, nPer, z_min){
-        
-        /*/test example
-        let testingPoints = [[0, 0, -30], [20, 0, -30], [20, 12, -30], [10, 20, -30], [0, 12, -30], [0, 0, -60], [20, 0, -60], [20, 12, -60], [10, 20, -60], [0, 12, -60]];
-        /*/
         let testingPoints = this.scene.models[model].vertices;
-        //*/
         let modifiedPoints = [];
         for(let i=0; i<testingPoints.length; i++){
-            /*/test example
-            let points = testingPoints[i];
-            /*/
             let points = this.toArray(testingPoints[i]);
-            //*/
             let originalPoints = new Matrix(4, 1);
             originalPoints.values = [points[0],
                                      points[1],
                                      points[2],
                                      1];
-            let multipliedPoints = Matrix.multiply([nPer, originalPoints]);
+
+            // multiply points by nper
+            let multipliedPoints = Matrix.multiply([nPer, testingPoints[i]]);
             let multipliedArr = this.toArray(multipliedPoints);
             modifiedPoints[i] = multipliedArr;
 
         }
+
+        //make list of lines
         let edges = this.scene.models[model].edges;
         for(let edge=0; edge<edges.length; edge++){
             for(let vertex=0; vertex<edges[edge].length-1; vertex++){
@@ -277,53 +264,61 @@ class Renderer {
             let newOut0 = out0;
             let newOut1 = out1;
             let newTest = test;
-            // console.log(pt0.x, pt0.y, pt1.x, pt1.y);
             while(newTest==="clip"){
-                if(out0 != 0){
+                console.log("before "+newOut0+", "+newOut1);
+                if(newOut0 != 0){
                     pt0 = this.clipPoint(newOut0, pt0, c, z_min);
-                    newOut0 = newOut0-this.firstBit(newOut0);
+                    newOut0 = this.outcodePerspective(pt0, z_min);
                 }
-                if(out1 != 0){
+                else if(newOut1 != 0){
                     pt1 = this.clipPoint(newOut1, pt1, c, z_min);
-                    newOut1 = newOut1-this.firstBit(newOut1);
+                    newOut1 = this.outcodePerspective(pt1, z_min);
                 }
-                newTest = this.trivialTests(this.outcodePerspective(pt0, z_min), this.outcodePerspective(pt1, z_min));
+                newTest = this.trivialTests(newOut0, newOut1);
+                console.log("now "+newOut0+", "+newOut1);
                 
             }
 
             if(newTest === "reject"){
                 return result;
             }
-            // console.log("aa "+pt0.data, pt1.data);
 
             result = {pt0: pt0, pt1: pt1};
-            // console.log(pt0.x, pt0.y, pt1.x, pt1.y);
+            console.log(result)
             return result;
         }
     }
 
     clipPoint(out, p, c, z_min){
+        //use the outcodes to determine which edge you are clipping against
         let t = 0;
         let firstBit = this.firstBit(out);
         if(firstBit == LEFT){
+            // -x0 + z0  /  Δx + -Δz
             t = this.intersectTvalue(-p.x, p.z, c.x, -c.z);
         }
         else if(firstBit == RIGHT){
+            // x0 + z0  /  -Δx + -Δz
             t = this.intersectTvalue(p.x, p.z, -c.x, -c.z);
         }
         else if(firstBit == BOTTOM){
+            // -y0 + z0  /  Δy + -Δz
             t = this.intersectTvalue(-p.y, p.z, c.y, -c.z);
         }
         else if(firstBit == TOP){
+            // y0 + z0  /  -Δy + -Δz
             t = this.intersectTvalue(p.y, p.z, -c.y, -c.z);
         }
         else if(firstBit == NEAR){
+            // z0 + -z_min  /  -Δz
             t = this.intersectTvalue(p.z, -z_min, 0, -c.z);
         }
         else /* if(firstBit == FAR) */{
+            // -z0 + -1  /  -Δz
             t = this.intersectTvalue(-p.z, -1, 0, c.z);
         }
         
+        //use the corresponding parametric equations to calculate t and use t to get the intersection point (x,y,z)
         let x = p.x+t*c.x;
         let y = p.y+t*c.y;
         let z = p.z+t*c.z;
@@ -339,9 +334,7 @@ class Renderer {
     }
 
     firstBit(out){
-        // console.log(out);
-        for(let i=0; i<BITS.length; i++){   
-            // console.log(out >= BITS[i]);
+        for(let i=0; i<BITS.length; i++){
             if(out >= BITS[i]){
                 return BITS[i];
             }
@@ -350,15 +343,15 @@ class Renderer {
     }
 
     trivialTests(out0, out1){
-        if(out0 | out1 == 0){
+        if((out0 | out1) == 0){
             //trivial accept
             return "accept";
         }
-        else if(out0 & out1 != 0){
+        else if((out0 & out1) != 0){
             //trivial reject
             return "reject";
         }else{
-            //clip math stuff
+            //clip
             return "clip";
         }
     }
@@ -411,11 +404,6 @@ class Renderer {
         prp.values = [prpArr[0], prpArr[1], prpArr[2]];
         srp.values = [srpArr[0], srpArr[1], srpArr[2]];
         vup.values = [vupArr[0], vupArr[1], vupArr[2]];
-        /*/test example
-        prp.values = [0, 10, -5];
-        srp.values = [20, 15, -40];
-        vup.values = [1, 1, 0];
-        //*/
         let n = prp.subtract(srp);
         n.normalize();
 
@@ -471,7 +459,6 @@ class Renderer {
 
                 let center = JSON.parse(JSON.stringify(scene.models[i].center));
                 let width = JSON.parse(JSON.stringify(scene.models[i].width));
-                console.log(center);
                 let cubeVerticies = this.getCubeVertices(center, width);
                 model.edges = [
                     [0, 1, 2, 3, 0],
@@ -481,8 +468,8 @@ class Renderer {
                     [2, 6],
                     [3, 7]
                 ];
-                console.log(cubeVerticies);
-                console.log(model.edges);
+                // console.log(cubeVerticies);
+                // console.log(model.edges);
                 for (let j = 0; j < cubeVerticies.length; j++) {
                     model.vertices.push(Vector4(cubeVerticies[j][0],
                                                 cubeVerticies[j][1],
@@ -493,17 +480,57 @@ class Renderer {
                     }
                 }
                 
+            }else if(model.type === 'cylinder'){
+                model.vertices = [];
+
+                let center = JSON.parse(JSON.stringify(scene.models[i].center));
+                let radius = JSON.parse(JSON.stringify(scene.models[i].radius));
+                let height = JSON.parse(JSON.stringify(scene.models[i].height));
+                let sides = JSON.parse(JSON.stringify(scene.models[i].sides));
+                let cylinderVerticies = this.getCylinderVerticies(center, height, radius, sides);
+                // let cylinderVerticies = this.getCylinderVerticies([300, 300, -40], 300, 100, 13);
+                
+                for (let j = 0; j < cylinderVerticies.length; j++) {
+                    model.vertices.push(Vector4(cylinderVerticies[j][0],
+                                                cylinderVerticies[j][1],
+                                                cylinderVerticies[j][2],
+                                                1));
+                    if (scene.models[i].hasOwnProperty('animation')) {
+                        model.animation = JSON.parse(JSON.stringify(scene.models[i].animation));
+                    }
+                }
+                // console.log(cylinderVerticies.length);
+                let halfLength = cylinderVerticies.length*0.5;
+                let topIndex;
+                let edges0 = [];
+                let edges1 = [];
+                let edgesRest = [];
+                for(let bottomIndex=0; bottomIndex<halfLength; bottomIndex++){
+                    topIndex = bottomIndex+halfLength;
+                    edges0[bottomIndex] = bottomIndex;
+                    edges1[bottomIndex] = topIndex;
+                    edgesRest[bottomIndex] = [bottomIndex, topIndex];
+                }
+                // let edges = edges0.concat(edges1, edgesRest);
+                edges0.push(0);
+                edges1.push(halfLength);
+                let edges = [edges0, edges1];
+                edges = edges.concat(edgesRest);
+                model.edges = edges;
+                console.log(halfLength);
+                console.log(edges);
+                
             }
             else {
-                // model.center = Vector4(scene.models[i].center[0],
-                //                        scene.models[i].center[1],
-                //                        scene.models[i].center[2],
-                //                        1);
-                // for (let key in scene.models[i]) {
-                //     if (scene.models[i].hasOwnProperty(key) && key !== 'type' && key != 'center') {
-                //         model[key] = JSON.parse(JSON.stringify(scene.models[i][key]));
-                //     }
-                // }
+                model.center = Vector4(scene.models[i].center[0],
+                                       scene.models[i].center[1],
+                                       scene.models[i].center[2],
+                                       1);
+                for (let key in scene.models[i]) {
+                    if (scene.models[i].hasOwnProperty(key) && key !== 'type' && key != 'center') {
+                        model[key] = JSON.parse(JSON.stringify(scene.models[i][key]));
+                    }
+                }
             }
 
             model.matrix = new Matrix(4, 4);
@@ -511,6 +538,59 @@ class Renderer {
         }
 
         return processed;
+    }
+
+    getCylinderVerticies(center, height, radius, sides){
+        let circleXZ = this.getCircleVerticies(center, radius, sides);
+        let halfHeight = height*0.5;
+        let result0 = [];
+        let result1 = [];
+        let result = [];
+        for(let i=0; i<sides; i++){
+            //bottom circle
+            result0.push([circleXZ[i].x, center[1]-halfHeight, circleXZ[i].z]);
+            //top circle
+            result1.push([circleXZ[i].x, center[1]+halfHeight, circleXZ[i].z]);
+        }
+        result = result0.concat(result1);
+        return result;
+    }
+
+    getCircleVerticies(center, radius, sides){
+
+        let ratio = 1/sides;
+        let seg = 2*Math.PI*ratio;
+        let p = seg;
+        let result = [];
+        let current = {x: center[0]+radius, z: center[2]};
+        for(let i=0; i<sides; i++){
+            let x = Math.round(center[0] + radius * Math.cos(p));
+            let z = Math.round(center[2] + radius * Math.sin(p));
+            let next = {x: x, z: z};
+            result.push({x:current.x, z: current.z})
+            // console.log(current.x, current.z);
+            current = next;
+            p+=seg;
+        }
+        return result;
+    }
+
+
+    drawCircle(center, radius, sides){
+
+        let ratio = 1/sides;
+        let seg = 2*Math.PI*ratio;
+        let p = seg;
+        let prev = {x: center.x+radius, y: center.y};
+        for(let i=0; i<sides;i++){
+            let x = Math.round(center.x + radius * Math.cos(p));
+            let y = Math.round(center.y + radius * Math.sin(p));
+            let current = {x: x, y: y};
+            this.drawLine(prev.x, prev.y, current.x, current.y);
+            // console.log(prev.x, prev.y);
+            prev = current;
+            p+=seg;
+        }
     }
 
     getCubeVertices(center, width){
@@ -529,7 +609,6 @@ class Renderer {
         for(let i=0; i<adj.length; i++){
             result.push(this.cubeVertex(center, adj[i]));
         }
-        // console.log(result);
         return result;
     }
 
