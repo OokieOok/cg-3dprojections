@@ -627,7 +627,7 @@ class Renderer {
                 let edges = [edges0, edges1];
                 edges = edges.concat(edgesRest);
                 model.edges = edges;
-                console.log(edges);
+                // console.log(edges);
                 
             }
             else {
