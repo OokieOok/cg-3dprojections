@@ -99,6 +99,20 @@ class Renderer {
         let prp = this.toArray(this.scene.view.prp);
         let srp = this.toArray(this.scene.view.srp);
         let vrcu = this.toArray(this.vrc.u);
+        prp[0] = prp[0] + vrcu[0];
+        srp[0] = srp[0] + vrcu[0];
+        prp[1] = prp[1] + vrcu[1];
+        srp[1] = srp[1] + vrcu[1];
+        prp[2] = prp[2] + vrcu[2];
+        srp[2] = srp[2] + vrcu[2];
+        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
+    }
+
+    moveRight() {
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
         prp[0] = prp[0] - vrcu[0];
         srp[0] = srp[0] - vrcu[0];
         prp[1] = prp[1] - vrcu[1];
@@ -109,19 +123,6 @@ class Renderer {
         this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
     
-    moveRight() {
-        let prp = this.toArray(this.scene.view.prp);
-        let srp = this.toArray(this.scene.view.srp);
-        let vrcu = this.toArray(this.vrc.u);
-        prp[0] = prp[0] + vrcu[0];
-        srp[0] = srp[0] + vrcu[0];
-        prp[1] = prp[1] + vrcu[1];
-        srp[1] = srp[1] + vrcu[1];
-        prp[2] = prp[2] + vrcu[2];
-        srp[2] = srp[2] + vrcu[2];
-        this.scene.view.prp = Vector3(prp[0],prp[1],prp[2]);
-        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
-    }
     
     moveBackward() {
         let prp = this.toArray(this.scene.view.prp);
@@ -338,7 +339,7 @@ class Renderer {
             let newOut1 = out1;
             let newTest = test;
             while(newTest==="clip"){
-                console.log("before "+newOut0+", "+newOut1);
+                // console.log("before "+newOut0+", "+newOut1);
                 if(newOut0 != 0){
                     pt0 = this.clipPoint(newOut0, pt0, c, z_min);
                     newOut0 = this.outcodePerspective(pt0, z_min);
@@ -348,7 +349,7 @@ class Renderer {
                     newOut1 = this.outcodePerspective(pt1, z_min);
                 }
                 newTest = this.trivialTests(newOut0, newOut1);
-                console.log("now "+newOut0+", "+newOut1);
+                // console.log("now "+newOut0+", "+newOut1);
                 
             }
 
@@ -593,6 +594,41 @@ class Renderer {
                 console.log(halfLength);
                 console.log(edges);
                 
+            }else if(model.type === 'cone'){
+                model.vertices = [];
+
+                let center = JSON.parse(JSON.stringify(scene.models[i].center));
+                let radius = JSON.parse(JSON.stringify(scene.models[i].radius));
+                let height = JSON.parse(JSON.stringify(scene.models[i].height));
+                let sides = JSON.parse(JSON.stringify(scene.models[i].sides));
+                let coneVerticies = this.getConeVerticies(center, height, radius, sides);
+                
+                for (let j = 0; j < coneVerticies.length; j++) {
+                    model.vertices.push(Vector4(coneVerticies[j][0],
+                                                coneVerticies[j][1],
+                                                coneVerticies[j][2],
+                                                1));
+                    if (scene.models[i].hasOwnProperty('animation')) {
+                        model.animation = JSON.parse(JSON.stringify(scene.models[i].animation));
+                    }
+                }
+                let length = coneVerticies.length;
+                let halfLength = coneVerticies.length*0.5;
+                let edges0 = [];
+                let edges1 = [];
+                let edgesRest = [];
+                for(let bottomIndex=0; bottomIndex<length-1; bottomIndex++){
+                    edges0[bottomIndex] = bottomIndex;
+                    edgesRest[bottomIndex] = [bottomIndex, length-1];
+                }
+                // let edges = edges0.concat(edges1, edgesRest);
+                edges0.push(0);
+                edges1.push(halfLength);
+                let edges = [edges0, edges1];
+                edges = edges.concat(edgesRest);
+                model.edges = edges;
+                console.log(edges);
+                
             }
             else {
                 model.center = Vector4(scene.models[i].center[0],
@@ -612,6 +648,19 @@ class Renderer {
 
         return processed;
     }
+
+    getConeVerticies(center, height, radius, sides){
+        let circleXZ = this.getCircleVerticies(center, radius, sides);
+        let halfHeight = height*0.5;
+        let result = [];
+        for(let i=0; i<sides; i++){
+            //bottom circle
+            result.push([circleXZ[i].x, center[1]-halfHeight, circleXZ[i].z]);
+        }
+        result.push([center[0], center[1]+halfHeight, center[2]]);
+        return result;
+    }
+
 
     getCylinderVerticies(center, height, radius, sides){
         let circleXZ = this.getCircleVerticies(center, radius, sides);
