@@ -20,6 +20,7 @@ class Renderer {
         this.start_time = null;
         this.prev_time = null;
         this.step = 1;
+        this.angle = Math.PI / 180;
     }
 
     //
@@ -34,12 +35,63 @@ class Renderer {
 
     //
     rotateLeft() {
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        let vrcn = this.toArray(this.vrc.n);
+        let vrcv = this.toArray(this.vrc.v);
+        let cos = Math.cos(this.angle);
+        let sin = Math.sin(this.angle);
+        let prpsrp = [0,0,0]
+        prpsrp[0] = srp[0] - prp[0];
+        prpsrp[1] = srp[1] - prp[1];
+        prpsrp[2] = srp[2] - prp[2];
+
+        let x = prpsrp[0] * cos + prpsrp[2] * sin;
+        let z = -prpsrp[0] * sin + prpsrp[2] * cos;
+
+        srp[0] = x + prp[0];
+        srp[1] = prpsrp[1] + prp[1];
+        srp[2] = z + prp[2];
+
+        let vrcu_new = vrcu.map((v, i) => v * cos + vrcv[i] * sin);
+        let vrcv_new = vrcv.map((v, i) => -vrcu[i] * sin + v * cos);
+
+        this.vrc.u = Vector3(vrcu_new[0], vrcu_new[1], vrcu_new[2]);
+        this.vrc.n = Vector3(vrcn[0], vrcn[1], vrcn[2]);
+        this.vrc.v = Vector3(vrcv_new[0], vrcv_new[1], vrcv_new[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
         
     }
     
     //
     rotateRight() {
+        let prp = this.toArray(this.scene.view.prp);
+        let srp = this.toArray(this.scene.view.srp);
+        let vrcu = this.toArray(this.vrc.u);
+        let vrcn = this.toArray(this.vrc.n);
+        let vrcv = this.toArray(this.vrc.v);
+        let cos = Math.cos(-this.angle);
+        let sin = Math.sin(-this.angle);
+        let prpsrp = [0,0,0]
+        prpsrp[0] = srp[0] - prp[0];
+        prpsrp[1] = srp[1] - prp[1];
+        prpsrp[2] = srp[2] - prp[2];
 
+        let x = prpsrp[0] * cos + prpsrp[2] * sin;
+        let z = -prpsrp[0] * sin + prpsrp[2] * cos;
+
+        srp[0] = x + prp[0];
+        srp[1] = prpsrp[1] + prp[1];
+        srp[2] = z + prp[2];
+
+        let vrcu_new = vrcu.map((v, i) => v * cos + vrcv[i] * sin);
+        let vrcv_new = vrcv.map((v, i) => -vrcu[i] * sin + v * cos);
+
+        this.vrc.u = Vector3(vrcu_new[0], vrcu_new[1], vrcu_new[2]);
+        this.vrc.n = Vector3(vrcn[0], vrcn[1], vrcn[2]);
+        this.vrc.v = Vector3(vrcv_new[0], vrcv_new[1], vrcv_new[2]);
+        this.scene.view.srp = Vector3(srp[0],srp[1],srp[2]);
     }
    
     moveLeft() {
