@@ -3,6 +3,8 @@
 3D Projections & Clipping starter code using the HTML5 Canvas 2D API
 
 ---
+The A and D keys move the image left and right, the W and S keys move the image forward and back, and the left and right arrow keys rotate the image clockwise and counterclockwise.
+---
 
 ## Vector Class API
 Code includes file `matrix.js` used to create vectors and matrices
